@@ -481,6 +481,7 @@
         <input id="player-name" type="text" maxlength="10" placeholder="이름을 입력하세요">
         <button class="btn small" onclick="submitScore()">랭킹 등록</button>
       </div>
+      <div id="player-rank" style="display:none; font-size:18px; font-weight:bold; color:#4CAF50; margin:12px 0; text-align:center;"></div>
       <div id="ranking-list"></div>
       <div class="end-actions">
         <button class="btn secondary" onclick="location.reload()">다시하기</button>
@@ -552,6 +553,7 @@ let selectedIdx = [];
 let roundStartTime = 0;
 let locked = false;
 let currentGameMode = 'practice'; // 'practice' | 'real'
+let lastPlayerName = ''; // 마지막으로 등록한 플레이어 이름
 
 function toRad(d) { return (d * Math.PI) / 180; }
 function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
@@ -1164,6 +1166,7 @@ async function submitScore() {
   if (!name) { nameInput.focus(); return; }
   if (!firebaseReady) return;
   try {
+    lastPlayerName = name; // 본인 순위 표시용
     await db.ref(RANKING_PATH).push({
       name,
       score,
@@ -1182,20 +1185,39 @@ async function submitScore() {
 async function loadRanking() {
   if (!firebaseReady) return;
   const listEl = document.getElementById('ranking-list');
+  const playerRankEl = document.getElementById('player-rank');
   try {
-    const snap = await db.ref(RANKING_PATH).orderByChild('score').limitToLast(10).once('value');
+    // 최대 500명의 데이터 조회 (본인 순위 계산 및 전체 순위 파악용)
+    const snap = await db.ref(RANKING_PATH).orderByChild('score').limitToLast(500).once('value');
     const entries = [];
     snap.forEach((child) => { entries.push(child.val()); });
     entries.reverse(); // limitToLast returns ascending order; show highest first
+
+    // 화면에는 상위 50위만 표시
     listEl.innerHTML = '';
     let rank = 1;
-    entries.forEach((d) => {
-      const row = document.createElement('div');
-      row.className = 'rank-row';
-      row.innerHTML = `<span class="rank-no">${rank}</span><span class="rank-name">${d.name}</span><span class="rank-score">${d.score}점</span>`;
-      listEl.appendChild(row);
+    let playerRank = null;
+    entries.forEach((d, idx) => {
+      // 상위 50위까지만 화면에 표시
+      if (idx < 50) {
+        const row = document.createElement('div');
+        row.className = 'rank-row';
+        row.innerHTML = `<span class="rank-no">${rank}</span><span class="rank-name">${d.name}</span><span class="rank-score">${d.score}점</span>`;
+        listEl.appendChild(row);
+      }
+      // 본인 순위는 전체 500위 중에서 찾기
+      if (lastPlayerName && d.name === lastPlayerName) {
+        playerRank = idx + 1; // idx는 0부터 시작하므로 +1
+      }
       rank++;
     });
+    // 본인 순위 표시
+    if (playerRank) {
+      playerRankEl.textContent = `🎯 당신의 순위: ${playerRank}위`;
+      playerRankEl.style.display = 'block';
+    } else {
+      playerRankEl.style.display = 'none';
+    }
     listEl.classList.add('show');
   } catch (e) {
     console.error('랭킹 조회 실패:', e);
