@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>직각삼각형 합동 짝 찾기</title>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<style>
+  @font-face {
+    font-family: 'Pretendard';
+    src: url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/woff2/PretendardVariable.woff2') format('woff2-variations');
+    font-weight: 100 900;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; min-height: 100%;
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif;
+    background: linear-gradient(180deg, #f5f7fb 0%, #eef1f8 100%);
+    color: #1d1d1f;
+    -webkit-font-smoothing: antialiased;
+    -webkit-text-size-adjust: 100%;
+    overflow-x: hidden;
+    word-break: keep-all; /* 한글이 단어 중간에서 끊기지 않도록 */
+  }
+  button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+  .screen {
+    display: none;
+    min-height: 100vh;
+    min-height: 100dvh;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .screen.active { display: flex; }
+
+  /* ---------- 시작 화면 ---------- */
+  .title-card {
+    background: #ffffff;
+    border-radius: 28px;
+    padding: 56px 48px;
+    max-width: 560px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(30, 41, 89, 0.12);
+  }
+  .badge {
+    display: inline-block;
+    background: #eef2ff;
+    color: #4f5bd5;
+    font-weight: 700;
+    font-size: 14px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+    letter-spacing: 0.02em;
+  }
+  h1 {
+    font-size: 34px;
+    font-weight: 800;
+    margin: 0 0 14px;
+    letter-spacing: -0.02em;
+  }
+  .subtitle {
+    font-size: 17px;
+    color: #6e6e73;
+    line-height: 1.6;
+    margin: 0 0 30px;
+  }
+  .subtitle b { color: #1d1d1f; font-weight: 700; }
+
+  .btn {
+    font-family: inherit;
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    background: linear-gradient(135deg, #5b6cf0, #4338ca);
+    border: none;
+    border-radius: 16px;
+    padding: 16px 36px;
+    cursor: pointer;
+    box-shadow: 0 10px 24px rgba(67, 56, 202, 0.28);
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+  }
+  .btn:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(67, 56, 202, 0.34); }
+  .btn:active { transform: translateY(0); }
+  .btn.secondary {
+    background: #fff;
+    color: #4338ca;
+    border: 2px solid #e0e3fb;
+    box-shadow: none;
+  }
+  .btn.small { font-size: 14px; padding: 10px 20px; border-radius: 12px; }
+
+  .mode-select {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .mode-btn {
+    flex: 1;
+    font-family: inherit;
+    border: none;
+    border-radius: 18px;
+    padding: 20px 14px;
+    cursor: pointer;
+    text-align: left;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+  }
+  .mode-btn:hover { transform: translateY(-2px); }
+  .mode-btn .mode-title { font-size: 19px; font-weight: 800; margin-bottom: 4px; white-space: nowrap; }
+  .mode-btn .mode-desc { font-size: 14px; line-height: 1.5; opacity: 0.92; white-space: nowrap; }
+  .mode-btn.practice {
+    background: linear-gradient(135deg, #5b6cf0, #4338ca);
+    color: #fff;
+    box-shadow: 0 10px 24px rgba(67, 56, 202, 0.28);
+  }
+  .mode-btn.real {
+    background: linear-gradient(135deg, #ff8a5b, #d9480f);
+    color: #fff;
+    box-shadow: 0 10px 24px rgba(217, 72, 15, 0.28);
+  }
+
+  /* ---------- 게임 화면 ---------- */
+  #screen-game { justify-content: flex-start; padding-top: 28px; }
+  .hud {
+    width: 100%;
+    max-width: 760px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+    padding: 0 6px;
+    gap: 12px;
+  }
+  .hud-right { display: flex; gap: 12px; }
+  .hud-item {
+    background: #fff;
+    border-radius: 14px;
+    padding: 10px 20px;
+    box-shadow: 0 4px 16px rgba(30,41,89,0.08);
+    font-weight: 700;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 120px;
+    justify-content: center;
+    white-space: nowrap;
+  }
+  .hud-item span.label { font-weight: 500; color: #8a8a8e; font-size: 13px; }
+  .home-btn {
+    font-family: inherit;
+    background: #fff;
+    border: none;
+    border-radius: 14px;
+    padding: 10px 18px;
+    box-shadow: 0 4px 16px rgba(30,41,89,0.08);
+    font-weight: 700;
+    font-size: 15px;
+    color: #4338ca;
+    cursor: pointer;
+    white-space: nowrap;
+    flex: 0 0 auto;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+  }
+  .home-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(30,41,89,0.14); }
+  #timer-value { font-size: 20px; color: #4338ca; }
+  #timer-value.warn { color: #d92d20; }
+  #score-value { font-size: 20px; color: #1d1d1f; }
+
+  .instruction-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .instruction {
+    font-size: 15px;
+    color: #6e6e73;
+    font-weight: 600;
+  }
+  .mode-tag {
+    font-size: 12px;
+    font-weight: 800;
+    padding: 4px 10px;
+    border-radius: 999px;
+  }
+  .mode-tag.practice { background: #eef2ff; color: #4338ca; }
+  .mode-tag.real { background: #fff1eb; color: #d9480f; }
+
+  #triangle-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
+    width: min(100%, 620px, calc(100dvh - 230px));
+  }
+  .tri-card {
+    background: #fff;
+    border-radius: 20px;
+    border: 3px solid transparent;
+    box-shadow: 0 6px 20px rgba(30,41,89,0.08);
+    cursor: pointer;
+    transition: border-color 0.15s ease, transform 0.1s ease;
+    padding: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .tri-card:hover { transform: translateY(-2px); }
+  .tri-card.selected { border-color: #4f5bd5; }
+  .tri-card.correct { border-color: #12b76a; background: #ecfdf3; }
+  .tri-card.wrong { border-color: #d92d20; background: #fef3f2; }
+  .tri-card svg { width: 100%; height: auto; display: block; }
+  .tri-card.locked { pointer-events: none; }
+
+  .feedback-banner {
+    position: fixed;
+    top: 26px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-16px);
+    font-size: 18px;
+    font-weight: 800;
+    padding: 12px 28px;
+    border-radius: 999px;
+    opacity: 0;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+    pointer-events: none;
+    z-index: 20;
+  }
+  .feedback-banner.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .feedback-banner.correct { background: #12b76a; color: #fff; }
+  .feedback-banner.wrong { background: #d92d20; color: #fff; }
+
+  .explain-panel {
+    display: none;
+    margin-top: 18px;
+    background: #ecfdf3;
+    border: 2px solid #12b76a;
+    border-radius: 16px;
+    padding: 18px 22px;
+    text-align: center;
+    max-width: 620px;
+    width: 100%;
+  }
+  .explain-panel.show { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .explain-text { font-size: 16px; font-weight: 700; color: #065f46; line-height: 1.5; }
+  .explain-text b { color: #047857; }
+
+  /* ---------- 종료 화면 ---------- */
+  .result-card {
+    background: #fff;
+    border-radius: 28px;
+    padding: 48px 44px;
+    max-width: 480px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(30, 41, 89, 0.12);
+  }
+  .result-emoji { font-size: 48px; margin-bottom: 6px; }
+  .result-score { font-size: 44px; font-weight: 800; color: #4338ca; margin: 6px 0 4px; }
+  .result-sub { color: #6e6e73; font-size: 15px; margin-bottom: 24px; }
+  .result-stats {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 26px;
+  }
+  .stat-box {
+    flex: 1;
+    background: #f7f8fc;
+    border-radius: 14px;
+    padding: 14px 8px;
+  }
+  .stat-box .num { font-size: 22px; font-weight: 800; }
+  .stat-box.correct .num { color: #12b76a; }
+  .stat-box.wrong .num { color: #d92d20; }
+  .stat-box .lbl { font-size: 13px; color: #8a8a8e; margin-top: 2px; }
+
+  .name-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .name-row input {
+    flex: 1;
+    font-family: inherit;
+    font-size: 15px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 2px solid #e5e7eb;
+    outline: none;
+  }
+  .name-row input:focus { border-color: #4f5bd5; }
+
+  #ranking-notice {
+    font-size: 13px;
+    color: #b45309;
+    background: #fffbeb;
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 14px;
+    display: none;
+    text-align: left;
+    line-height: 1.5;
+  }
+
+  #ranking-list {
+    text-align: left;
+    background: #f7f8fc;
+    border-radius: 14px;
+    padding: 12px 16px;
+    margin: 16px 0 22px;
+    max-height: 220px;
+    overflow-y: auto;
+    display: none;
+  }
+  #ranking-list.show { display: block; }
+  .rank-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 7px 0;
+    font-size: 14px;
+    border-bottom: 1px solid #e9eaf2;
+  }
+  .rank-row:last-child { border-bottom: none; }
+  .rank-row .rank-no { color: #8a8a8e; width: 26px; font-weight: 700; }
+  .rank-row .rank-name { flex: 1; font-weight: 600; }
+  .rank-row .rank-score { font-weight: 700; color: #4338ca; }
+
+  .end-actions { display: flex; gap: 10px; justify-content: center; }
+
+  /* ============ 모바일 ============ */
+  @media (max-width: 620px) {
+    .screen { padding: 12px; }
+
+    /* --- 시작 화면 --- */
+    .title-card { padding: 30px 20px; border-radius: 22px; }
+    .badge { font-size: 12.5px; padding: 5px 12px; margin-bottom: 14px; }
+    h1 { font-size: 26px; margin-bottom: 10px; }
+    .subtitle { font-size: 15px; margin-bottom: 24px; }
+    .mode-select { flex-direction: column; gap: 10px; } /* 세로로 쌓아 글자가 한 줄에 들어오게 */
+    .mode-btn { padding: 16px 18px; border-radius: 16px; }
+    .mode-btn .mode-title { font-size: 18px; }
+    .mode-btn .mode-desc { font-size: 13.5px; }
+
+    /* --- 게임 화면 --- */
+    #screen-game { padding: 10px 10px 12px; justify-content: center; }
+    .hud { margin-bottom: 10px; gap: 8px; padding: 0; }
+    .hud-right { gap: 8px; }
+    .hud-item { padding: 8px 12px; min-width: 0; font-size: 14px; gap: 6px; border-radius: 12px; }
+    .hud-item span.label { font-size: 11.5px; }
+    #timer-value, #score-value { font-size: 18px; }
+    .home-btn { padding: 9px 13px; font-size: 14px; border-radius: 12px; }
+    .instruction-row { gap: 8px; margin-bottom: 10px; flex-wrap: wrap; justify-content: center; }
+    .instruction { font-size: 13.5px; }
+    .mode-tag { font-size: 11.5px; padding: 3px 9px; }
+    #triangle-grid {
+      gap: 10px;
+      width: min(100%, calc(100dvh - 170px));
+    }
+    .tri-card { border-radius: 14px; padding: 2px; border-width: 3px; }
+
+    .feedback-banner { top: 14px; font-size: 16px; padding: 10px 22px; }
+
+    /* 정답 설명은 화면 아래 고정 — 스크롤 없이 바로 보이게 */
+    .explain-panel { border-radius: 16px; padding: 14px 16px; }
+    .explain-panel.show {
+      position: fixed;
+      left: 10px; right: 10px;
+      bottom: calc(10px + env(safe-area-inset-bottom));
+      width: auto; max-width: none;
+      margin: 0;
+      z-index: 30;
+      box-shadow: 0 -6px 28px rgba(30,41,89,0.18);
+    }
+    .explain-text { font-size: 14px; }
+    /* 설명이 떠 있는 동안 아래 공간을 비워 도형과 겹치지 않게 */
+    #screen-game.explaining { padding-bottom: 165px; }
+
+    /* --- 종료 화면 --- */
+    .result-card { padding: 32px 20px; border-radius: 22px; }
+    .result-emoji { font-size: 40px; }
+    .result-score { font-size: 38px; }
+    .result-sub { font-size: 14px; margin-bottom: 20px; }
+    .stat-box .num { font-size: 20px; }
+    .name-row input { font-size: 15px; padding: 11px 12px; }
+    .btn { font-size: 17px; padding: 15px 30px; }
+    .btn.small { font-size: 14px; padding: 11px 16px; }
+  }
+
+  /* 아주 작은 화면(구형 폰) */
+  @media (max-width: 344px) {
+    .hud-item { padding: 7px 9px; gap: 4px; }
+    .hud-item span.label { font-size: 10.5px; }
+    #timer-value, #score-value { font-size: 16px; }
+    .home-btn { padding: 8px 10px; font-size: 13px; }
+    .instruction { font-size: 12.5px; }
+    h1 { font-size: 23px; }
+  }
+
+  /* 가로 모드: 세로 공간이 부족할 때 */
+  @media (max-height: 520px) and (orientation: landscape) {
+    #screen-game { padding-top: 8px; justify-content: flex-start; }
+    .hud { margin-bottom: 8px; }
+    .instruction-row { margin-bottom: 8px; }
+    #triangle-grid { width: min(100%, 620px, calc(100dvh - 120px)); gap: 8px; }
+    .title-card { padding: 24px 24px; }
+    h1 { font-size: 24px; }
+    .subtitle { margin-bottom: 18px; }
+    /* 가로 모드: 설명을 한 줄 바 형태로 아래 고정하고, 도형은 그만큼 줄임 */
+    .explain-panel { padding: 10px 14px; }
+    .explain-panel.show {
+      position: fixed;
+      left: 10px; right: 10px;
+      bottom: calc(8px + env(safe-area-inset-bottom));
+      width: auto; max-width: none; margin: 0; z-index: 30;
+      flex-direction: row; justify-content: center; gap: 14px;
+    }
+    .explain-text { font-size: 13px; }
+    #screen-game.explaining { padding-bottom: 0; }
+    #screen-game.explaining #triangle-grid { width: min(100%, 620px, calc(100dvh - 205px)); }
+  }
+</style>
+</head>
+<body>
+
+  <!-- ========== 시작 화면 ========== -->
+  <div id="screen-start" class="screen active">
+    <div class="title-card">
+      <span class="badge">중2 · 직각삼각형의 합동조건</span>
+      <h1>직각삼각형 합동 짝 찾기</h1>
+      <p class="subtitle">4개 중 <b>합동인 직각삼각형 2개</b>를 찾아 클릭하세요.</p>
+      <div class="mode-select">
+        <button class="mode-btn practice" onclick="startGame('practice')">
+          <div class="mode-title">🌱 연습모드</div>
+          <div class="mode-desc">시간 제한 없이 하나씩</div>
+        </button>
+        <button class="mode-btn real" onclick="startGame('real')">
+          <div class="mode-title">🔥 실전모드</div>
+          <div class="mode-desc">1분 안에 최고 점수</div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 게임 화면 ========== -->
+  <div id="screen-game" class="screen">
+    <div class="hud">
+      <button class="home-btn" onclick="goHome()">🏠 처음으로</button>
+      <div class="hud-right">
+        <div class="hud-item" id="timer-box"><span class="label">남은 시간</span><span id="timer-value">60</span></div>
+        <div class="hud-item"><span class="label">점수</span><span id="score-value">0</span></div>
+      </div>
+    </div>
+    <div class="instruction-row">
+      <span class="instruction">합동인 직각삼각형 2개를 클릭하세요</span>
+      <span id="mode-tag" class="mode-tag practice">연습모드</span>
+    </div>
+    <div id="triangle-grid"></div>
+    <div id="explain-panel" class="explain-panel"></div>
+  </div>
+  <div id="feedback-banner" class="feedback-banner"></div>
+
+  <!-- ========== 종료 화면 ========== -->
+  <div id="screen-end" class="screen">
+    <div class="result-card">
+      <div class="result-emoji">🎉</div>
+      <div class="result-score" id="final-score">0점</div>
+      <div class="result-sub">수고했어요! 오늘의 기록이에요</div>
+      <div class="result-stats">
+        <div class="stat-box correct"><div class="num" id="final-correct">0</div><div class="lbl">맞힌 문제</div></div>
+        <div class="stat-box wrong"><div class="num" id="final-wrong">0</div><div class="lbl">틀린 문제</div></div>
+      </div>
+      <div id="ranking-notice" style="display:none;">⚠️ 랭킹 서버에 연결할 수 없어요. 지금은 랭킹 저장 없이 점수만 표시돼요.</div>
+      <div class="name-row">
+        <input id="player-name" type="text" maxlength="10" placeholder="이름을 입력하세요">
+        <button class="btn small" onclick="submitScore()">랭킹 등록</button>
+      </div>
+      <div id="ranking-list"></div>
+      <div class="end-actions">
+        <button class="btn secondary" onclick="location.reload()">다시하기</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* =========================================================
+   Firebase 설정 — 이전 "도형의 닮음 O,X 퀴즈"와 같은 프로젝트(mathmatics-3160f)의
+   Realtime Database를 그대로 재사용합니다.
+   ========================================================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyCVEx7H-unTZ8Il4_yTtNAJO0YbdrK4vss",
+  authDomain: "mathmatics-3160f.firebaseapp.com",
+  databaseURL: "https://mathmatics-3160f-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "mathmatics-3160f"
+};
+const RANKING_PATH = "rightTriangleMatchScores";
+let db = null;
+let firebaseReady = false;
+try {
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.database();
+  firebaseReady = true;
+} catch (e) {
+  console.warn("Firebase 초기화 실패:", e);
+  firebaseReady = false;
+}
+
+/* =========================================================
+   게임 설정
+   ========================================================= */
+const REAL_TIME_LIMIT = 60; // 실전모드 제한시간(초), 필요하면 조정하세요
+
+// 점수 배점 — 학생들이 봤을 때 숫자가 커 보이도록 100배 스케일(정답 1000점 기준)로 설계.
+// 배율만 바뀐 것이라 아래 "찍기 방지" 부등식은 그대로 성립한다.
+const BASE_SCORE = 1000;          // 정답 기본 점수
+const SPEED_BONUS_MAX = 500;      // 0초에 맞히면 받는 최대 가산점
+const SPEED_BONUS_WINDOW = 12;    // 이 시간(초)이 지나면 가산점 0
+const WRONG_PENALTY = 400;        // 실전모드 오답 감점.
+// (정답 최소 1000점 + 최대 가산점 500점 = 1500점) 대비 감점이 너무 작으면
+// "값을 안 읽고 빠르게 아무거나 눌러서 시행 횟수로 승부 보기"가 더 유리해진다.
+// 무작위로 2개를 고르면 4개 중 합동쌍은 항상 1쌍뿐이라 정답 확률은 1/6 이므로,
+// 감점이 (평균 정답 점수)/5 이상이면 "묻지마 찍기"의 기대 점수가 0 이하가 된다.
+
+// 걸린 시간에 따라 매끄럽게 줄어드는 가산점(계단식이 아니라 연속값이라 점수가
+// 매번 100의 배수 같은 뻔한 숫자가 아니라 다양하게 나온다). 10점 단위로만 반올림.
+function computeSpeedBonus(elapsedSec) {
+  if (elapsedSec >= SPEED_BONUS_WINDOW) return 0;
+  const raw = SPEED_BONUS_MAX * (1 - elapsedSec / SPEED_BONUS_WINDOW);
+  return Math.max(0, Math.round(raw / 10) * 10);
+}
+
+const C_POOL = [6, 7, 8, 9, 10, 11, 12, 13, 14];
+const ANGLE_POOL = [25, 30, 35, 40, 50, 55, 60, 65, 70];
+const LEG_POOL = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+const C_MIN = Math.min(...C_POOL), C_MAX = Math.max(...C_POOL);
+const ANGLE_MIN = Math.min(...ANGLE_POOL), ANGLE_MAX = Math.max(...ANGLE_POOL);
+const LEG_MIN = Math.min(...LEG_POOL), LEG_MAX = Math.max(...LEG_POOL);
+
+let timeLeft = 0;
+let score = 0;
+let correctCount = 0;
+let wrongCount = 0;
+let timerHandle = null;
+let currentVals = [];
+let selectedIdx = [];
+let roundStartTime = 0;
+let locked = false;
+let currentGameMode = 'practice'; // 'practice' | 'real'
+
+function toRad(d) { return (d * Math.PI) / 180; }
+function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+function randChoice(arr) { return arr[randInt(0, arr.length - 1)]; }
+function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = randInt(0, i);
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+/* ---------- 값 생성 ----------
+   mode: 'RHA' (빗변+예각) / 'RHS' (빗변+다른 변) / 'SAS' (직각을 낀 두 변, 빗변 미표시) */
+function genValue(mode) {
+  if (mode === 'RHA') {
+    const c = randChoice(C_POOL);
+    const angle = randChoice(ANGLE_POOL);
+    return { mode, c, angle };
+  }
+  if (mode === 'RHS') {
+    const c = randChoice(C_POOL);
+    let candidates = LEG_POOL.filter((l) => l < c - 0.5);
+    if (candidates.length === 0) candidates = [Math.max(2, c - 2)];
+    const leg = randChoice(candidates);
+    return { mode, c, leg };
+  }
+  // SAS
+  const legA = randChoice(LEG_POOL);
+  const legB = randChoice(LEG_POOL);
+  return { mode, legA, legB };
+}
+
+// 실전모드용: 기준값과 아주 가까운(모양이 비슷한) 값 생성
+function genValueNear(mode, base) {
+  let v;
+  let guard = 0;
+  do {
+    guard++;
+    if (mode === 'RHA') {
+      const angle = clamp(base.angle + randChoice([-10, -8, -5, 5, 8, 10]), ANGLE_MIN, ANGLE_MAX);
+      const c = clamp(base.c + randChoice([-1, 0, 1]), C_MIN, C_MAX);
+      v = { mode, c, angle };
+    } else if (mode === 'RHS') {
+      let c = clamp(base.c + randChoice([-1, 0, 1]), C_MIN, C_MAX);
+      let leg = clamp(base.leg + randChoice([-1, 0, 1]), LEG_MIN, LEG_MAX);
+      if (leg >= c) leg = Math.max(2, c - 1);
+      v = { mode, c, leg };
+    } else {
+      const legA = clamp(base.legA + randChoice([-1, 0, 1]), LEG_MIN, LEG_MAX);
+      const legB = clamp(base.legB + randChoice([-1, 0, 1]), LEG_MIN, LEG_MAX);
+      v = { mode, legA, legB };
+    }
+  } while (valuesEqual(v, base) && guard < 20);
+  if (valuesEqual(v, base)) {
+    if (mode === 'RHA') v.angle = clamp(v.angle + 5, ANGLE_MIN, ANGLE_MAX);
+    else if (mode === 'RHS') v.leg = clamp(v.leg + 1, 2, v.c - 1);
+    else v.legA = clamp(v.legA + 1, LEG_MIN, LEG_MAX);
+  }
+  return v;
+}
+
+function valuesEqual(a, b) {
+  if (a.mode !== b.mode) return false;
+  if (a.mode === 'RHA') {
+    if (a.c !== b.c) return false;
+    // 같은 빗변이면, 표시된 예각이 같거나(같은 꼭짓점 기준) 서로 90°를 이루는 보각 관계여도
+    // (다른 꼭짓점 기준으로 잰 각일 뿐) 실제로는 같은 삼각형이라 합동임
+    return a.angle === b.angle || a.angle + b.angle === 90;
+  }
+  if (a.mode === 'RHS') return a.c === b.c && a.leg === b.leg;
+  // SAS: 두 변은 순서(가로/세로) 상관없이 같으면 합동
+  return (a.legA === b.legA && a.legB === b.legB) || (a.legA === b.legB && a.legB === b.legA);
+}
+
+/* 문제 유형 4가지를 정확히 같은 비율(각 25%)로 출제한다.
+   RHA_same : 두 삼각형에 대응되는 같은 각이 그대로 주어진 경우
+   RHA_comp : 서로 다른 꼭짓점 기준의 각이 주어져 90°에서 빼야 같아지는 경우
+   RHS      : 빗변과 다른 한 변
+   SAS      : 직각을 낀 두 변                                             */
+const ROUND_TYPES = ['RHA_same', 'RHA_comp', 'RHS', 'SAS'];
+let typeBag = [];
+function nextRoundType() {
+  if (typeBag.length === 0) typeBag = shuffle(ROUND_TYPES.slice()); // 4종이 고르게 순환
+  return typeBag.pop();
+}
+
+// 고난도 변형(맞힌 문제 수가 쌓일수록 등장) 관련 설정.
+// 실전모드의 "점수"는 이제 속도에 따라 연속적으로 변해 학생마다 들쭉날쭉하므로,
+// 점수 대신 맞힌 개수(correctCount)를 기준으로 삼아 연습모드에서도 똑같이 동작하게 한다.
+// 50% 같은 인위적인 상한을 두지 않고, 계속 잘 맞힐수록 등장 확률이 100%까지 꾸준히 올라간다
+// (100%가 되면 그 뒤로는 RHA(같은 각) 유형이 나올 때마다 항상 고난도로 나옴 — 수학적으로
+// 더 못 올라가는 것뿐, 일부러 걸어둔 상한이 아니다).
+const HARD_UNLOCK_CORRECT = 3;  // 이만큼 맞히기 전에는 고난도 문제가 등장하지 않음
+const HARD_RAMP_CORRECT = 20;   // 이후 이만큼 더 맞히면 등장 확률이 100%에 도달
+
+function hardChance() {
+  if (typeof correctCount !== 'number' || correctCount < HARD_UNLOCK_CORRECT) return 0;
+  return clamp((correctCount - HARD_UNLOCK_CORRECT) / HARD_RAMP_CORRECT, 0, 1);
+}
+
+// RHA 값에 "직각을 낀, 예각과 마주보지 않는 변"의 길이를 계산해 붙인다(자기 자신의 c·각도 기준이라 항상 실제 값과 일치)
+function attachExtraLeg(v) {
+  v.extraLeg = Math.round(v.c * Math.sin(toRad(v.angle)) * 10) / 10;
+}
+
+// 고난도용 RHS 모양 오답: 정답의 빗변·변 길이와 가깝게 만들어
+// "빗변도 비슷하고 변도 비슷하니 같겠지"라는 성급한 판단을 유도하는 함정
+function genRHSDecoyNear(refC, refLeg) {
+  const c = clamp(refC + randChoice([-1, 0, 1]), C_MIN, C_MAX);
+  let leg = clamp(Math.round(refLeg) + randChoice([-2, -1, 1, 2]), LEG_MIN, LEG_MAX);
+  if (leg >= c) leg = Math.max(LEG_MIN, c - 1);
+  return { mode: 'RHS', c, leg };
+}
+
+function generateRound() {
+  // 정답 쌍과 비슷한 값으로 나머지 삼각형을 만들어
+  // 모양만 봐서는 구분하기 어렵게 함 (값을 직접 비교해야 함)
+  const type = nextRoundType();
+  const mode = type.startsWith('RHA') ? 'RHA' : type;
+
+  let pairVal = genValue(mode);
+  if (type === 'RHA_comp') {
+    // 보각으로 표시해도 각도가 25~70° 범위 안에 남도록 각을 고른다
+    let g = 0;
+    while ((90 - pairVal.angle < 15 || 90 - pairVal.angle > 75 || pairVal.angle === 45) && g++ < 50) {
+      pairVal = genValue(mode);
+    }
+  }
+  const partner = type === 'RHA_comp'
+    ? { mode, c: pairVal.c, angle: 90 - pairVal.angle }
+    : { ...pairVal };
+
+  // 고난도 변형: RHA_same 유형에서 점수가 쌓이면 등장.
+  // 정답 삼각형에 예각뿐 아니라 변의 길이까지 같이 보여주고, 오답 중 일부는
+  // "직각+빗변+변의 길이(값이 살짝 다름)"만 보여주는 RHS 모양으로 섞어
+  // 각도 확인 없이 변 길이만 훑어보면 틀리도록 만든다.
+  const isHard = type === 'RHA_same' && Math.random() < hardChance();
+  if (isHard) {
+    attachExtraLeg(pairVal);
+    attachExtraLeg(partner);
+  }
+
+  let vals = [{ ...pairVal }, partner];
+  let guard = 0;
+  while (vals.length < 4 && guard < 500) {
+    guard++;
+    let v;
+    if (isHard && Math.random() < 0.55) {
+      v = genRHSDecoyNear(pairVal.c, pairVal.extraLeg);
+    } else {
+      // 보각 유형에서는 두 표기(예: 70°와 20°) 주변으로 번갈아 오답을 만들어
+      // 어느 한쪽만 보고 답을 고를 수 없게 한다
+      const base = randChoice([pairVal, partner]);
+      v = genValueNear(mode, base);
+      if (isHard) attachExtraLeg(v);
+    }
+    if (vals.some((existing) => valuesEqual(existing, v))) continue;
+    vals.push(v);
+  }
+  while (vals.length < 4) vals.push(genValue(mode)); // 극히 드문 예외 대비
+  shuffle(vals);
+  return vals.map((v) => ({
+    ...v,
+    uid: Math.random().toString(36).slice(2),
+    flipX: Math.random() < 0.5,
+    flipY: Math.random() < 0.5,
+  }));
+}
+
+/* ---------- 기하 계산 & SVG 렌더링 ---------- */
+function computeLegs(v) {
+  if (v.mode === 'RHA') {
+    return { adjacent: v.c * Math.cos(toRad(v.angle)), opposite: v.c * Math.sin(toRad(v.angle)) };
+  }
+  if (v.mode === 'RHS') {
+    return { adjacent: v.leg, opposite: Math.sqrt(Math.max(v.c * v.c - v.leg * v.leg, 0.01)) };
+  }
+  // SAS: 두 변 길이가 곧 가로/세로
+  return { adjacent: v.legA, opposite: v.legB };
+}
+function normalize(p) {
+  const len = Math.hypot(p.x, p.y) || 1;
+  return { x: p.x / len, y: p.y / len };
+}
+function sub(a, b) { return { x: a.x - b.x, y: a.y - b.y }; }
+function add(a, b, s = 1) { return { x: a.x + b.x * s, y: a.y + b.y * s }; }
+
+const VB_W = 248, VB_H = 248;
+const FIT_MARGIN = 5;   // 캔버스 가장자리 최소 여백
+
+/* 라벨 글자 크기(SVG 좌표 단위).
+   SVG는 카드 너비에 맞춰 축소되므로, 화면이 작을수록 이 값을 키워야
+   실제로 보이는 글자 크기가 유지된다. renderRound에서 카드 크기에 맞춰 조정. */
+let LABEL_FS = 15;
+const labelGap = () => LABEL_FS * 0.72;   // 변과 글자 상자 사이 간격
+const halfTextH = () => LABEL_FS * 0.56;  // 글자 높이의 절반
+
+// 카드 실제 픽셀 너비 → 화면에서 원하는 글자 크기가 나오는 SVG 단위 글자 크기
+function computeLabelFontSize(cardW) {
+  if (!cardW || cardW <= 0) return 15;
+  const desiredCssPx = clamp(cardW * 0.058, 13.5, 17.5);
+  return clamp((desiredCssPx * VB_W) / cardW, 13, 32);
+}
+
+/* 글자 실제 폭 측정 — 라벨이 도형에 가려지거나 밖으로 나가지 않도록
+   상자 크기를 정확히 알아야 해서 canvas measureText를 사용 */
+let _measureCtx = null;
+const _textWidthCache = new Map();
+function textWidth(text) {
+  const key = text + '@' + LABEL_FS.toFixed(2);
+  if (_textWidthCache.has(key)) return _textWidthCache.get(key);
+  if (!_measureCtx) _measureCtx = document.createElement('canvas').getContext('2d');
+  _measureCtx.font = `700 ${LABEL_FS}px Pretendard, -apple-system, sans-serif`;
+  const w = _measureCtx.measureText(text).width + LABEL_FS * 0.2; // 약간의 여유
+  _textWidthCache.set(key, w);
+  return w;
+}
+function rerenderIfIdle() {
+  if (currentVals && currentVals.length && !locked) {
+    renderRound();
+    const cards = document.querySelectorAll('.tri-card');
+    selectedIdx.forEach((i) => cards[i] && cards[i].classList.add('selected'));
+  }
+}
+if (document.fonts && document.fonts.ready) {
+  document.fonts.ready.then(() => { _textWidthCache.clear(); rerenderIfIdle(); });
+}
+let _resizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(_resizeTimer);
+  _resizeTimer = setTimeout(rerenderIfIdle, 150);
+});
+
+function perp(p) { return { x: -p.y, y: p.x }; }
+function neg(p) { return { x: -p.x, y: -p.y }; }
+function edgeSign(p, a, b) { return (p.x - b.x) * (a.y - b.y) - (a.x - b.x) * (p.y - b.y); }
+
+// 글자 상자(축 정렬 사각형)가 방향 d 쪽으로 뻗는 최대 거리
+function boxSupport(halfW, halfH, d) {
+  return halfW * Math.abs(d.x) + halfH * Math.abs(d.y);
+}
+
+// 상자의 네 꼭짓점이 모두 삼각형 안쪽에 margin 이상 들어가는지
+function boxInsideTriangle(center, halfW, halfH, A, B, C, margin) {
+  const corners = [
+    { x: center.x - halfW, y: center.y - halfH },
+    { x: center.x + halfW, y: center.y - halfH },
+    { x: center.x - halfW, y: center.y + halfH },
+    { x: center.x + halfW, y: center.y + halfH },
+  ];
+  const edges = [[A, B, C], [B, C, A], [C, A, B]];
+  for (const [p1, p2, opp] of edges) {
+    const oppSign = Math.sign(edgeSign(opp, p1, p2));
+    const len = Math.hypot(p2.x - p1.x, p2.y - p1.y) || 1;
+    for (const c of corners) {
+      // 부호 있는 거리(안쪽이 양수)가 margin 이상이어야 함
+      const d = (edgeSign(c, p1, p2) * oppSign) / len;
+      if (d < margin) return false;
+    }
+  }
+  return true;
+}
+
+/* 한 삼각형의 배치(꼭짓점·라벨·보조선)를 계산.
+   라벨은 항상 해당 변의 바깥쪽 반평면에 통째로 놓이므로 도형에 가려지지 않음. */
+function layoutTriangle(v, pxPerUnit) {
+  const { adjacent, opposite } = computeLegs(v);
+  const px = adjacent * pxPerUnit;
+  const py = opposite * pxPerUnit;
+
+  // 정준 좌표(직각이 원점) 후 flip 적용
+  let pts = [
+    { x: 0, y: 0 },   // 직각 꼭짓점
+    { x: px, y: 0 },  // 예각(밑변) 꼭짓점
+    { x: 0, y: -py }, // 예각(높이) 꼭짓점
+  ];
+  pts = pts.map((p) => ({ x: v.flipX ? -p.x : p.x, y: v.flipY ? -p.y : p.y }));
+  const [rightV, adjV, oppV] = pts;
+
+  const HH = halfTextH();
+  const GAP = labelGap();
+  const labels = [];
+  // 변 AB의 라벨을 바깥쪽(반대 꼭짓점 C의 반대편)에 배치
+  function pushEdgeLabel(A, B, C, text, color) {
+    const mid = { x: (A.x + B.x) / 2, y: (A.y + B.y) / 2 };
+    let n = normalize(perp(sub(B, A)));
+    if (n.x * (mid.x - C.x) + n.y * (mid.y - C.y) < 0) n = neg(n);
+    const halfW = textWidth(text) / 2;
+    const dist = GAP + boxSupport(halfW, HH, n);
+    labels.push({ pos: add(mid, n, dist), text, color, halfW, halfH: HH });
+  }
+
+  let arc = null;
+  if (v.mode === 'RHA') {
+    pushEdgeLabel(adjV, oppV, rightV, `${v.c}cm`, '#1d1d1f'); // 빗변
+    const dirLeg = normalize(sub(rightV, adjV));
+    const dirHyp = normalize(sub(oppV, adjV));
+    const legLen = Math.hypot(rightV.x - adjV.x, rightV.y - adjV.y);
+    const hypLen = Math.hypot(oppV.x - adjV.x, oppV.y - adjV.y);
+    const r = clamp(0.34 * Math.min(legLen, hypLen), LABEL_FS * 0.7, LABEL_FS * 1.5);
+    const p1 = add(adjV, dirLeg, r);
+    const p2 = add(adjV, dirHyp, r);
+    const cross = dirLeg.x * dirHyp.y - dirLeg.y * dirHyp.x;
+    arc = { p1, p2, r, sweep: cross > 0 ? 1 : 0 };
+
+    const bis = normalize(add(dirLeg, dirHyp)); // 삼각형 안쪽을 향함
+    const text = `${v.angle}°`;
+    const halfW = textWidth(text) / 2;
+    // 1순위: 각 안쪽에 표시(교과서 표기). 도형을 벗어나면 꼭짓점 바깥쪽으로 뺀다.
+    let pos = add(adjV, bis, r + LABEL_FS * 0.27 + boxSupport(halfW, HH, bis));
+    if (!boxInsideTriangle(pos, halfW, HH, rightV, adjV, oppV, LABEL_FS * 0.13)) {
+      const out = neg(bis);
+      pos = add(adjV, out, GAP + boxSupport(halfW, HH, out));
+    }
+    labels.push({ pos, text, color: '#4f5bd5', halfW, halfH: HH });
+    // 고난도 변형: 예각과 함께 변의 길이도 하나 더 표시(직각을 낀, 각과 마주보지 않는 변)
+    if (v.extraLeg != null) {
+      pushEdgeLabel(rightV, oppV, adjV, `${v.extraLeg}cm`, '#4f5bd5');
+    }
+  } else if (v.mode === 'RHS') {
+    pushEdgeLabel(adjV, oppV, rightV, `${v.c}cm`, '#1d1d1f'); // 빗변
+    pushEdgeLabel(rightV, adjV, oppV, `${v.leg}cm`, '#4f5bd5'); // 다른 한 변
+  } else {
+    // SAS: 빗변은 표시하지 않고 직각을 낀 두 변만 표시
+    pushEdgeLabel(rightV, adjV, oppV, `${v.legA}cm`, '#4f5bd5');
+    pushEdgeLabel(rightV, oppV, adjV, `${v.legB}cm`, '#4f5bd5');
+  }
+
+  // 직각 표시(작은 정사각형) — 삼각형 안에 들어가도록 크기 제한
+  const dirAdj = normalize(sub(adjV, rightV));
+  const dirOpp = normalize(sub(oppV, rightV));
+  const ms = clamp(0.22 * Math.min(px, py), LABEL_FS * 0.4, LABEL_FS * 0.8);
+  const marker = [
+    add(rightV, dirAdj, ms),
+    add(add(rightV, dirAdj, ms), dirOpp, ms),
+    add(rightV, dirOpp, ms),
+  ];
+
+  // 도형 + 라벨 전체를 감싸는 바운딩박스
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (const p of pts) {
+    minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
+    minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
+  }
+  for (const L of labels) {
+    minX = Math.min(minX, L.pos.x - L.halfW); maxX = Math.max(maxX, L.pos.x + L.halfW);
+    minY = Math.min(minY, L.pos.y - L.halfH); maxY = Math.max(maxY, L.pos.y + L.halfH);
+  }
+  return { pts, labels, arc, marker, bbox: { minX, maxX, minY, maxY, w: maxX - minX, h: maxY - minY } };
+}
+
+/* 네 삼각형이 공통 축척(같은 1cm = 같은 픽셀)을 쓰면서도
+   라벨까지 모두 칸 안에 들어오는 최대 축척을 이분탐색으로 찾는다. */
+function fitScale(vals) {
+  const limitW = VB_W - FIT_MARGIN * 2;
+  const limitH = VB_H - FIT_MARGIN * 2;
+  const fits = (s) => vals.every((v) => {
+    const b = layoutTriangle(v, s).bbox;
+    return b.w <= limitW && b.h <= limitH;
+  });
+  let lo = 0.5, hi = 40;
+  if (fits(hi)) return hi;
+  for (let i = 0; i < 32; i++) {
+    const mid = (lo + hi) / 2;
+    if (fits(mid)) lo = mid; else hi = mid;
+  }
+  return lo;
+}
+
+function triangleSVG(v, pxPerUnit) {
+  const L = layoutTriangle(v, pxPerUnit);
+  // 전체 바운딩박스를 캔버스 정중앙에 배치
+  const tx = (VB_W - L.bbox.w) / 2 - L.bbox.minX;
+  const ty = (VB_H - L.bbox.h) / 2 - L.bbox.minY;
+  const T = (p) => ({ x: p.x + tx, y: p.y + ty });
+
+  const [rightV, adjV, oppV] = L.pts.map(T);
+  const mk = L.marker.map(T);
+  const strokeW = Math.max(2, LABEL_FS * 0.17);
+  const arcSvg = L.arc
+    ? (() => {
+        const a1 = T(L.arc.p1), a2 = T(L.arc.p2);
+        return `<path d="M ${a1.x} ${a1.y} A ${L.arc.r} ${L.arc.r} 0 0 ${L.arc.sweep} ${a2.x} ${a2.y}" fill="none" stroke="#4f5bd5" stroke-width="${strokeW * 0.8}"/>`;
+      })()
+    : '';
+  const labelsSvg = L.labels.map((lab) => {
+    const p = T(lab.pos);
+    return `<text x="${p.x}" y="${p.y}" font-size="${LABEL_FS}" font-weight="700" fill="${lab.color}" text-anchor="middle" dominant-baseline="middle">${lab.text}</text>`;
+  }).join('');
+
+  return `
+    <svg viewBox="0 0 ${VB_W} ${VB_H}" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="${rightV.x},${rightV.y} ${adjV.x},${adjV.y} ${oppV.x},${oppV.y}"
+        fill="#eef2ff" stroke="#3a3a8f" stroke-width="${strokeW}" stroke-linejoin="round"/>
+      <path d="M ${mk[0].x} ${mk[0].y} L ${mk[1].x} ${mk[1].y} L ${mk[2].x} ${mk[2].y}" fill="none" stroke="#3a3a8f" stroke-width="${strokeW * 0.8}"/>
+      ${arcSvg}
+      ${labelsSvg}
+    </svg>
+  `;
+}
+
+function renderRound() {
+  const grid = document.getElementById('triangle-grid');
+  grid.innerHTML = '';
+
+  // 먼저 빈 카드를 만들어 실제 렌더링 크기를 잰 뒤, 그에 맞는 글자 크기로 그린다
+  const cards = currentVals.map((v, idx) => {
+    const card = document.createElement('div');
+    card.className = 'tri-card';
+    card.dataset.idx = idx;
+    card.addEventListener('click', () => onSelect(idx));
+    grid.appendChild(card);
+    return card;
+  });
+
+  const cardW = cards[0].getBoundingClientRect().width || 240;
+  const nextFs = computeLabelFontSize(cardW);
+  if (Math.abs(nextFs - LABEL_FS) > 0.01) {
+    LABEL_FS = nextFs;
+    _textWidthCache.clear();
+  }
+
+  const pxPerUnit = fitScale(currentVals);
+  cards.forEach((card, idx) => {
+    card.innerHTML = triangleSVG(currentVals[idx], pxPerUnit);
+  });
+}
+
+/* ---------- 라운드 흐름 ---------- */
+function loadNextRound() {
+  selectedIdx = [];
+  locked = false;
+  document.getElementById('explain-panel').classList.remove('show');
+  document.getElementById('screen-game').classList.remove('explaining');
+  currentVals = generateRound();
+  roundStartTime = Date.now();
+  renderRound();
+}
+
+function canContinue() {
+  return currentGameMode === 'practice' || timeLeft > 0;
+}
+
+function explanationText(vA, vB) {
+  if (vA.mode === 'RHA') {
+    if (vA.angle !== vB.angle) {
+      return `빗변은 같고 예각은 ${vA.angle}°, ${vB.angle}°로 다르게 표시됐지만 90°-${vA.angle}°=${vB.angle}°(다른 꼭짓점 기준일 뿐 같은 삼각형) → <b>RHA 합동</b>`;
+    }
+    return '빗변과 한 예각이 각각 같아요 → <b>RHA 합동</b>';
+  }
+  if (vA.mode === 'RHS') return '빗변과 다른 한 변이 각각 같아요 → <b>RHS 합동</b>';
+  return '직각을 낀 두 변이 각각 같아요 → <b>SAS 합동</b>';
+}
+
+function showExplanation(vA, vB) {
+  const panel = document.getElementById('explain-panel');
+  panel.innerHTML = `<div class="explain-text">✅ ${explanationText(vA, vB)}</div><button class="btn small" id="explain-next-btn">다음 문제</button>`;
+  panel.classList.add('show');
+  document.getElementById('screen-game').classList.add('explaining');
+  document.getElementById('explain-next-btn').onclick = () => {
+    panel.classList.remove('show');
+    loadNextRound();
+  };
+}
+
+function goHome() {
+  if (timerHandle) { clearInterval(timerHandle); timerHandle = null; }
+  document.getElementById('explain-panel').classList.remove('show');
+  document.getElementById('screen-game').classList.remove('explaining');
+  document.getElementById('screen-game').classList.remove('active');
+  document.getElementById('screen-end').classList.remove('active');
+  document.getElementById('screen-start').classList.add('active');
+}
+
+function onSelect(idx) {
+  if (locked) return;
+  const cards = document.querySelectorAll('.tri-card');
+
+  // 이미 선택된 카드를 다시 클릭하면 선택 취소
+  if (selectedIdx.includes(idx)) {
+    selectedIdx = selectedIdx.filter((i) => i !== idx);
+    cards[idx].classList.remove('selected');
+    return;
+  }
+
+  if (selectedIdx.length >= 2) return;
+  selectedIdx.push(idx);
+  cards[idx].classList.add('selected');
+  if (selectedIdx.length === 2) {
+    locked = true;
+    evaluateSelection(cards);
+  }
+}
+
+function evaluateSelection(cards) {
+  const [i1, i2] = selectedIdx;
+  const isCorrect = valuesEqual(currentVals[i1], currentVals[i2]);
+  const elapsed = (Date.now() - roundStartTime) / 1000;
+
+  document.querySelectorAll('.tri-card').forEach((c) => c.classList.add('locked'));
+
+  if (isCorrect) {
+    const bonus = currentGameMode === 'real' ? computeSpeedBonus(elapsed) : 0;
+    score += BASE_SCORE + bonus;
+    correctCount++;
+    cards[i1].classList.add('correct');
+    cards[i2].classList.add('correct');
+    document.getElementById('score-value').textContent = score;
+
+    if (currentGameMode === 'practice') {
+      document.getElementById('timer-value').textContent = correctCount; // 맞힌 문제 수 표시
+      showExplanation(currentVals[i1], currentVals[i2]);
+    } else {
+      showFeedback(true, bonus);
+      setTimeout(() => { if (canContinue()) loadNextRound(); }, 550);
+    }
+  } else {
+    wrongCount++;
+    cards[i1].classList.add('wrong');
+    cards[i2].classList.add('wrong');
+    if (currentGameMode === 'real') {
+      // 감점 없이는 값을 읽지 않고 빠르게 아무거나 눌러 시행 횟수만 늘리는 "찍기"가
+      // 오히려 신중하게 푸는 것보다 유리해지므로, 오답에는 반드시 감점을 준다.
+      score = Math.max(0, score - WRONG_PENALTY);
+      document.getElementById('score-value').textContent = score;
+    }
+    showFeedback(false, -WRONG_PENALTY);
+    setTimeout(() => { if (canContinue()) loadNextRound(); }, 700);
+  }
+}
+
+function showFeedback(correct, bonusOrPenalty) {
+  const el = document.getElementById('feedback-banner');
+  el.className = 'feedback-banner show ' + (correct ? 'correct' : 'wrong');
+  if (correct) {
+    el.textContent = `정답! +${BASE_SCORE + bonusOrPenalty}점`;
+  } else if (currentGameMode === 'real') {
+    el.textContent = `아쉬워요! ${bonusOrPenalty}점`; // bonusOrPenalty는 음수(-WRONG_PENALTY)
+  } else {
+    el.textContent = '아쉬워요, 다음 문제!';
+  }
+  setTimeout(() => { el.classList.remove('show'); }, 500);
+}
+
+/* ---------- 타이머 / 모드 ---------- */
+function startGame(mode) {
+  currentGameMode = mode;
+  const tag = document.getElementById('mode-tag');
+  tag.textContent = mode === 'real' ? '실전모드' : '연습모드';
+  tag.className = 'mode-tag ' + (mode === 'real' ? 'real' : 'practice');
+
+  document.getElementById('screen-start').classList.remove('active');
+  document.getElementById('screen-end').classList.remove('active');
+  document.getElementById('screen-game').classList.add('active');
+  score = 0;
+  correctCount = 0;
+  wrongCount = 0;
+  document.getElementById('score-value').textContent = score;
+
+  const timerBox = document.getElementById('timer-box');
+  const timerLabel = timerBox.querySelector('.label');
+  const timerValueEl = document.getElementById('timer-value');
+  timerValueEl.classList.remove('warn');
+
+  if (timerHandle) { clearInterval(timerHandle); timerHandle = null; }
+
+  if (mode === 'practice') {
+    // 연습모드: 시간 제한 없이, 대신 맞힌 문제 수를 표시
+    timerLabel.textContent = '맞힌 문제';
+    timerValueEl.textContent = '0';
+  } else {
+    // 실전모드: 1분 제한시간
+    timeLeft = REAL_TIME_LIMIT;
+    timerLabel.textContent = '남은 시간';
+    timerValueEl.textContent = timeLeft;
+    timerHandle = setInterval(() => {
+      timeLeft--;
+      timerValueEl.textContent = timeLeft;
+      if (timeLeft <= 5) timerValueEl.classList.add('warn');
+      if (timeLeft <= 0) {
+        clearInterval(timerHandle);
+        timerHandle = null;
+        endGame();
+      }
+    }, 1000);
+  }
+
+  loadNextRound();
+}
+
+function endGame() {
+  document.getElementById('screen-game').classList.remove('active');
+  document.getElementById('screen-end').classList.add('active');
+  document.getElementById('final-score').textContent = score + '점';
+  document.getElementById('final-correct').textContent = correctCount;
+  document.getElementById('final-wrong').textContent = wrongCount;
+  if (!firebaseReady) {
+    document.getElementById('ranking-notice').style.display = 'block';
+  } else {
+    loadRanking();
+  }
+}
+
+/* ---------- 랭킹 ---------- */
+async function submitScore() {
+  const nameInput = document.getElementById('player-name');
+  const name = nameInput.value.trim();
+  if (!name) { nameInput.focus(); return; }
+  if (!firebaseReady) return;
+  try {
+    await db.ref(RANKING_PATH).push({
+      name,
+      score,
+      correct: correctCount,
+      wrong: wrongCount,
+      mode: currentGameMode,
+      timestamp: firebase.database.ServerValue.TIMESTAMP,
+    });
+    nameInput.value = '';
+    loadRanking();
+  } catch (e) {
+    console.error('랭킹 저장 실패:', e);
+  }
+}
+
+async function loadRanking() {
+  if (!firebaseReady) return;
+  const listEl = document.getElementById('ranking-list');
+  try {
+    const snap = await db.ref(RANKING_PATH).orderByChild('score').limitToLast(10).once('value');
+    const entries = [];
+    snap.forEach((child) => { entries.push(child.val()); });
+    entries.reverse(); // limitToLast returns ascending order; show highest first
+    listEl.innerHTML = '';
+    let rank = 1;
+    entries.forEach((d) => {
+      const row = document.createElement('div');
+      row.className = 'rank-row';
+      row.innerHTML = `<span class="rank-no">${rank}</span><span class="rank-name">${d.name}</span><span class="rank-score">${d.score}점</span>`;
+      listEl.appendChild(row);
+      rank++;
+    });
+    listEl.classList.add('show');
+  } catch (e) {
+    console.error('랭킹 조회 실패:', e);
+  }
+}
+</script>
+</body>
+</html>
