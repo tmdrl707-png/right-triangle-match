@@ -1193,13 +1193,13 @@ async function loadRanking() {
     snap.forEach((child) => { entries.push(child.val()); });
     entries.reverse(); // limitToLast returns ascending order; show highest first
 
-    // 화면에는 상위 50위만 표시
+    // 화면에는 상위 100위만 표시
     listEl.innerHTML = '';
     let rank = 1;
     let playerRank = null;
     entries.forEach((d, idx) => {
-      // 상위 50위까지만 화면에 표시
-      if (idx < 50) {
+      // 상위 100위까지만 화면에 표시
+      if (idx < 100) {
         const row = document.createElement('div');
         row.className = 'rank-row';
         row.innerHTML = `<span class="rank-no">${rank}</span><span class="rank-name">${d.name}</span><span class="rank-score">${d.score}점</span>`;
