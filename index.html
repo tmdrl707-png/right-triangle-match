@@ -1218,14 +1218,38 @@ async function submitScore() {
   if (!firebaseReady) return;
   try {
     lastPlayerName = name; // 본인 순위 표시용
-    await db.ref(RANKING_PATH).push({
+
+    // 이름이 완전히 같은(대소문자/공백까지 정확히 동일한) 기존 기록들을 조회
+    const existingSnap = await db.ref(RANKING_PATH).orderByChild('name').equalTo(name).once('value');
+    let bestExistingScore = -Infinity;
+    const existingKeys = [];
+    existingSnap.forEach((child) => {
+      existingKeys.push(child.key);
+      const v = child.val();
+      if (typeof v.score === 'number' && v.score > bestExistingScore) bestExistingScore = v.score;
+    });
+
+    // 기존 최고 기록이 있고, 이번 점수가 그보다 높지 않으면 저장하지 않음(기존 기록 유지)
+    if (existingKeys.length > 0 && score <= bestExistingScore) {
+      nameInput.value = '';
+      loadRanking();
+      return;
+    }
+
+    // 새 기록(또는 첫 등록)이면: 동일 이름의 기존 기록은 지우고 새 점수로 등록
+    const updates = {};
+    existingKeys.forEach((key) => { updates[key] = null; });
+    const newRef = db.ref(RANKING_PATH).push();
+    updates[newRef.key] = {
       name,
       score,
       correct: correctCount,
       wrong: wrongCount,
       mode: currentGameMode,
       timestamp: firebase.database.ServerValue.TIMESTAMP,
-    });
+    };
+    await db.ref(RANKING_PATH).update(updates);
+
     nameInput.value = '';
     loadRanking();
   } catch (e) {
