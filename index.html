@@ -445,6 +445,20 @@
           <div class="mode-desc">1분 안에 최고 점수</div>
         </button>
       </div>
+      <button class="btn secondary" onclick="showRankingView()" style="margin-top: 16px; width: 100%;">📊 랭킹보기</button>
+    </div>
+  </div>
+
+  <!-- ========== 랭킹 전용 화면 ========== -->
+  <div id="screen-ranking" class="screen">
+    <div class="result-card">
+      <div style="text-align:center; margin-bottom:16px;">
+        <h2 style="margin:0; font-size:24px;">🏆 전체 랭킹</h2>
+      </div>
+      <div id="public-ranking-list"></div>
+      <div class="end-actions">
+        <button class="btn secondary" onclick="goHome()">🏠 처음으로</button>
+      </div>
     </div>
   </div>
 
@@ -1027,7 +1041,44 @@ function goHome() {
   document.getElementById('screen-game').classList.remove('explaining');
   document.getElementById('screen-game').classList.remove('active');
   document.getElementById('screen-end').classList.remove('active');
+  document.getElementById('screen-ranking').classList.remove('active');
   document.getElementById('screen-start').classList.add('active');
+}
+
+function showRankingView() {
+  const password = prompt('랭킹을 보려면 비밀번호를 입력하세요:');
+  if (password === '12345') {
+    document.getElementById('screen-start').classList.remove('active');
+    document.getElementById('screen-ranking').classList.add('active');
+    loadPublicRanking();
+  } else if (password !== null) {
+    alert('비밀번호가 틀렸어요!');
+  }
+}
+
+async function loadPublicRanking() {
+  if (!firebaseReady) return;
+  const listEl = document.getElementById('public-ranking-list');
+  try {
+    const snap = await db.ref(RANKING_PATH).orderByChild('score').limitToLast(500).once('value');
+    const entries = [];
+    snap.forEach((child) => { entries.push(child.val()); });
+    entries.reverse();
+    listEl.innerHTML = '';
+    let rank = 1;
+    entries.forEach((d, idx) => {
+      if (idx < 100) {
+        const row = document.createElement('div');
+        row.className = 'rank-row';
+        row.innerHTML = `<span class="rank-no">${rank}</span><span class="rank-name">${d.name}</span><span class="rank-score">${d.score}점</span>`;
+        listEl.appendChild(row);
+      }
+      rank++;
+    });
+    listEl.classList.add('show');
+  } catch (e) {
+    console.error('랭킹 조회 실패:', e);
+  }
 }
 
 function onSelect(idx) {
