@@ -455,8 +455,10 @@
       <div style="text-align:center; margin-bottom:16px;">
         <h2 style="margin:0; font-size:24px;">🏆 전체 랭킹</h2>
       </div>
+      <div id="cleanup-status" style="display:none; text-align:center; font-size:14px; color:#4338ca; margin-bottom:10px;"></div>
       <div id="public-ranking-list"></div>
       <div class="end-actions">
+        <button class="btn secondary" onclick="cleanupDuplicates()">🧹 중복 정리</button>
         <button class="btn secondary" onclick="goHome()">🏠 처음으로</button>
       </div>
     </div>
@@ -1078,6 +1080,60 @@ async function loadPublicRanking() {
     listEl.classList.add('show');
   } catch (e) {
     console.error('랭킹 조회 실패:', e);
+  }
+}
+
+async function cleanupDuplicates() {
+  if (!firebaseReady) return;
+  const password = prompt('중복 정리를 하려면 비밀번호를 입력하세요:');
+  if (password === null) return; // 취소
+  if (password !== '54321') {
+    alert('비밀번호가 틀렸어요!');
+    return;
+  }
+  const statusEl = document.getElementById('cleanup-status');
+  statusEl.style.display = 'block';
+  statusEl.textContent = '중복 기록을 확인하는 중...';
+  try {
+    // 전체 기록을 한 번에 가져와서 이름별로 그룹화
+    const snap = await db.ref(RANKING_PATH).once('value');
+    const byName = {}; // name -> [{key, score}, ...]
+    snap.forEach((child) => {
+      const v = child.val();
+      if (!v || typeof v.name !== 'string' || typeof v.score !== 'number') return;
+      if (!byName[v.name]) byName[v.name] = [];
+      byName[v.name].push({ key: child.key, score: v.score });
+    });
+
+    // 이름별로 최고점 1개만 남기고 나머지 삭제 대상으로 표시
+    const updates = {};
+    let removedCount = 0;
+    Object.keys(byName).forEach((name) => {
+      const records = byName[name];
+      if (records.length <= 1) return;
+      let bestKey = records[0].key;
+      let bestScore = records[0].score;
+      records.forEach((r) => {
+        if (r.score > bestScore) { bestScore = r.score; bestKey = r.key; }
+      });
+      records.forEach((r) => {
+        if (r.key !== bestKey) {
+          updates[r.key] = null;
+          removedCount++;
+        }
+      });
+    });
+
+    if (removedCount === 0) {
+      statusEl.textContent = '정리할 중복 기록이 없어요. 이미 깨끗해요!';
+    } else {
+      await db.ref(RANKING_PATH).update(updates);
+      statusEl.textContent = `중복 기록 ${removedCount}개를 정리했어요!`;
+      loadPublicRanking();
+    }
+  } catch (e) {
+    console.error('중복 정리 실패:', e);
+    statusEl.textContent = '중복 정리 중 오류가 발생했어요. 콘솔을 확인해주세요.';
   }
 }
 
