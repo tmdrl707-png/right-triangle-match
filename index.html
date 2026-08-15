@@ -1095,21 +1095,24 @@ async function cleanupDuplicates() {
   statusEl.style.display = 'block';
   statusEl.textContent = '중복 기록을 확인하는 중...';
   try {
-    // 전체 기록을 한 번에 가져와서 이름별로 그룹화
+    // 전체 기록을 한 번에 가져와서 "한글 글자만 남긴 이름"을 기준으로 그룹화
+    // 예: "강원교1", "강원교2", "강원교" → 모두 같은 그룹("강원교")으로 취급
     const snap = await db.ref(RANKING_PATH).once('value');
-    const byName = {}; // name -> [{key, score}, ...]
+    const byName = {}; // normalizedKey -> [{key, score}, ...]
     snap.forEach((child) => {
       const v = child.val();
       if (!v || typeof v.name !== 'string' || typeof v.score !== 'number') return;
-      if (!byName[v.name]) byName[v.name] = [];
-      byName[v.name].push({ key: child.key, score: v.score });
+      const hangulOnly = v.name.replace(/[^가-힣]/g, '');
+      const groupKey = hangulOnly || v.name; // 한글이 하나도 없으면 원래 이름으로 구분
+      if (!byName[groupKey]) byName[groupKey] = [];
+      byName[groupKey].push({ key: child.key, score: v.score });
     });
 
-    // 이름별로 최고점 1개만 남기고 나머지 삭제 대상으로 표시
+    // 그룹별로 최고점 1개만 남기고 나머지 삭제 대상으로 표시
     const updates = {};
     let removedCount = 0;
-    Object.keys(byName).forEach((name) => {
-      const records = byName[name];
+    Object.keys(byName).forEach((groupKey) => {
+      const records = byName[groupKey];
       if (records.length <= 1) return;
       let bestKey = records[0].key;
       let bestScore = records[0].score;
